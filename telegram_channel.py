@@ -91,7 +91,7 @@ class TelegramChannelParser:
                     continue
 
                 detected_cat = detect_category(text)
-                if category and detected_cat != category and detected_cat != "other":
+                if category and detected_cat != category:
                     continue
 
                 date_obj, date_str = extract_date(text)
