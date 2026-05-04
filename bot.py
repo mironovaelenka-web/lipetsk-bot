@@ -4,8 +4,8 @@ import os
 from datetime import datetime
 
 from aiogram import Bot, Dispatcher, F
-from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, CallbackQuery
+from aiogram.filters import Command
+from aiogram.types import Message, CallbackQuery, BotCommand
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -18,9 +18,6 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
-TELETHON_API_ID = int(os.environ.get("TELETHON_API_ID", "0"))
-TELETHON_API_HASH = os.environ.get("TELETHON_API_HASH", "")
-TELETHON_SESSION = os.environ.get("TELETHON_SESSION", "")  # base64 строка сессии
 TG_CHANNEL = os.environ.get("TG_CHANNEL", "gid_lipetsk")
 
 CATEGORIES = {
@@ -38,14 +35,12 @@ db = Database()
 scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
 
 
-# ─── helpers ───────────────────────────────────────────────
-
-async def fetch_all_events(category: str = None, days_ahead: int = 3) -> list:
+async def fetch_all_events(category=None, days_ahead=3):
     results = []
     parsers = [
         AfishaParser(),
         TimepadParser(),
-        TelegramChannelParser(TELETHON_API_ID, TELETHON_API_HASH, TELETHON_SESSION, TG_CHANNEL),
+        TelegramChannelParser(),
     ]
     for parser in parsers:
         try:
@@ -53,16 +48,12 @@ async def fetch_all_events(category: str = None, days_ahead: int = 3) -> list:
             results.extend(events)
         except Exception as e:
             log.warning(f"{parser.__class__.__name__} error: {e}")
-
     results.sort(key=lambda x: x.get("date") or datetime.max)
     return results
 
 
-def format_event(event: dict) -> str:
-    icons = {
-        "concerts": "🎵", "art": "🖼", "sport": "🏃",
-        "party": "🎉", "theater": "🎭", "festival": "🎪",
-    }
+def format_event(event):
+    icons = {"concerts": "🎵", "art": "🖼", "sport": "🏃", "party": "🎉", "theater": "🎭", "festival": "🎪"}
     icon = icons.get(event.get("category", ""), "📌")
     lines = [f"{icon} <b>{event['title']}</b>"]
     if event.get("date_str"):
@@ -74,7 +65,7 @@ def format_event(event: dict) -> str:
     if event.get("url"):
         lines.append(f"🔗 <a href='{event['url']}'>Подробнее</a>")
     if event.get("source"):
-        lines.append(f"<i>Источник: {event['source']}</i>")
+        lines.append(f"<i>{event['source']}</i>")
     return "\n".join(lines)
 
 
@@ -97,7 +88,7 @@ def categories_keyboard():
     return kb.as_markup()
 
 
-def settings_keyboard(user_id: int):
+def settings_keyboard(user_id):
     prefs = db.get_prefs(user_id)
     notif_text = "🔔 Рассылка: вкл ✅" if prefs.get("notify", True) else "🔕 Рассылка: выкл ❌"
     kb = InlineKeyboardBuilder()
@@ -108,74 +99,36 @@ def settings_keyboard(user_id: int):
     return kb.as_markup()
 
 
-async def send_events(chat_id: int, events: list, title: str):
+async def send_events(chat_id, events, title):
     if not events:
-        await bot.send_message(
-            chat_id,
-            f"{title}\n\n😔 Пока ничего не нашли. Попробуй позже!",
-            parse_mode="HTML",
-            reply_markup=main_keyboard()
-        )
+        await bot.send_message(chat_id, f"{title}\n\n😔 Пока ничего не нашли.", parse_mode="HTML", reply_markup=main_keyboard())
         return
-    await bot.send_message(
-        chat_id,
-        f"{title}\n\nНашёл <b>{len(events)}</b> мероприятий:",
-        parse_mode="HTML"
-    )
+    await bot.send_message(chat_id, f"{title}\n\nНашёл <b>{len(events)}</b> мероприятий:", parse_mode="HTML")
     for ev in events[:10]:
         try:
-            await bot.send_message(
-                chat_id, format_event(ev),
-                parse_mode="HTML",
-                disable_web_page_preview=True
-            )
+            await bot.send_message(chat_id, format_event(ev), parse_mode="HTML", disable_web_page_preview=True)
             await asyncio.sleep(0.3)
         except Exception as e:
-            log.warning(f"Send event error: {e}")
-    if len(events) > 10:
-        await bot.send_message(
-            chat_id,
-            f"...и ещё {len(events) - 10}. Уточни категорию 👇",
-            reply_markup=categories_keyboard()
-        )
-    else:
-        await bot.send_message(chat_id, "Что ещё ищем? 👇", reply_markup=main_keyboard())
+            log.warning(f"Send error: {e}")
+    await bot.send_message(chat_id, "Что ещё ищем? 👇", reply_markup=main_keyboard())
 
 
-# ─── command handlers ──────────────────────────────────────
-
-@dp.message(CommandStart())
+@dp.message(Command("start"))
 async def cmd_start(message: Message):
     db.add_user(message.from_user.id)
     await message.answer(
         f"👋 Привет, {message.from_user.first_name}!\n\n"
-        "Я слежу за мероприятиями в <b>Липецке</b> и каждое утро присылаю подборку.\n\n"
-        "Источники:\n"
-        "• afishagoroda.ru\n"
-        "• Timepad\n"
-        "• Канал @gid_lipetsk\n\n"
+        "Я слежу за мероприятиями в <b>Липецке</b>.\n\n"
+        "Источники: afishagoroda.ru · Timepad · @gid_lipetsk\n\n"
         "Что ищем? 👇",
         parse_mode="HTML",
         reply_markup=main_keyboard()
     )
 
 
-@dp.message(Command("help"))
-async def cmd_help(message: Message):
-    await message.answer(
-        "📖 <b>Команды:</b>\n\n"
-        "/start — главное меню\n"
-        "/today — мероприятия сегодня\n"
-        "/weekend — на выходных\n"
-        "/settings — настройки\n\n"
-        "Или напиши что ищешь, например: <i>концерты</i>, <i>выставки</i>",
-        parse_mode="HTML"
-    )
-
-
 @dp.message(Command("today"))
 async def cmd_today(message: Message):
-    await message.answer("🔍 Ищу мероприятия на сегодня...")
+    await message.answer("🔍 Ищу на сегодня...")
     events = await fetch_all_events(days_ahead=1)
     await send_events(message.chat.id, events, "📅 <b>Сегодня в Липецке</b>")
 
@@ -188,7 +141,7 @@ async def cmd_weekend(message: Message):
 
 
 @dp.message(Command("settings"))
-async def cmd_settings_msg(message: Message):
+async def cmd_settings(message: Message):
     prefs = db.get_prefs(message.from_user.id)
     await message.answer(
         "⚙️ <b>Настройки</b>\n\n"
@@ -204,35 +157,28 @@ async def cmd_settings_msg(message: Message):
 async def text_search(message: Message):
     text = message.text.lower()
     category_map = {
-        ("концерт", "музык", "рок", "джаз", "поп"): "concerts",
-        ("выставк", "искусств", "галере", "музей"): "art",
-        ("спорт", "футбол", "бег", "тренировк", "матч"): "sport",
-        ("вечеринк", "клуб", "дискотек", "party"): "party",
-        ("театр", "кино", "спектакл", "фильм", "премьер"): "theater",
-        ("фестивал", "маркет", "ярмарк", "фест"): "festival",
+        ("концерт", "музык", "рок", "джаз"): "concerts",
+        ("выставк", "искусств", "галере"): "art",
+        ("спорт", "футбол", "бег"): "sport",
+        ("вечеринк", "клуб", "дискотек"): "party",
+        ("театр", "кино", "спектакл"): "theater",
+        ("фестивал", "маркет", "ярмарк"): "festival",
     }
     category = None
     for keywords, cat in category_map.items():
         if any(kw in text for kw in keywords):
             category = cat
             break
-
     await message.answer("🔍 Ищу...")
     events = await fetch_all_events(category=category, days_ahead=7)
-    title = (
-        f"{CATEGORIES[category]} <b>в Липецке</b>"
-        if category else
-        f"🔍 <b>По запросу «{message.text}»</b>"
-    )
+    title = f"{CATEGORIES[category]} <b>в Липецке</b>" if category else f"🔍 <b>Результаты</b>"
     await send_events(message.chat.id, events, title)
 
-
-# ─── callback handlers ─────────────────────────────────────
 
 @dp.callback_query(F.data == "today")
 async def cb_today(cb: CallbackQuery):
     await cb.answer()
-    await cb.message.answer("🔍 Ищу мероприятия на сегодня...")
+    await cb.message.answer("🔍 Ищу на сегодня...")
     events = await fetch_all_events(days_ahead=1)
     await send_events(cb.message.chat.id, events, "📅 <b>Сегодня в Липецке</b>")
 
@@ -282,8 +228,6 @@ async def cb_toggle_notify(cb: CallbackQuery):
     db.set_pref(cb.from_user.id, "notify", new_val)
     status = "включена ✅" if new_val else "выключена ❌"
     await cb.answer(f"Рассылка {status}", show_alert=True)
-    # обновляем клавиатуру
-    prefs["notify"] = new_val
     await cb.message.edit_reply_markup(reply_markup=settings_keyboard(cb.from_user.id))
 
 
@@ -298,13 +242,9 @@ async def cb_noop(cb: CallbackQuery):
     await cb.answer()
 
 
-# ─── scheduler ─────────────────────────────────────────────
-
 async def daily_broadcast():
-    log.info("Daily broadcast started...")
+    log.info("Daily broadcast...")
     users = db.get_subscribed_users()
-    if not users:
-        return
     events = await fetch_all_events(days_ahead=1)
     today_str = datetime.now().strftime("%d.%m.%Y")
     title = f"🌅 <b>Доброе утро! Афиша Липецка на {today_str}</b>"
@@ -313,14 +253,17 @@ async def daily_broadcast():
             await send_events(user_id, events, title)
             await asyncio.sleep(0.5)
         except Exception as e:
-            log.warning(f"Broadcast to {user_id} failed: {e}")
-    log.info(f"Broadcast done: {len(users)} users.")
+            log.warning(f"Broadcast error {user_id}: {e}")
 
-
-# ─── entry point ───────────────────────────────────────────
 
 async def main():
     db.init()
+    await bot.set_my_commands([
+        BotCommand(command="start", description="Главное меню"),
+        BotCommand(command="today", description="Мероприятия сегодня"),
+        BotCommand(command="weekend", description="На выходных"),
+        BotCommand(command="settings", description="Настройки"),
+    ])
     scheduler.add_job(daily_broadcast, "cron", hour=9, minute=0)
     scheduler.start()
     log.info("Bot is running.")
