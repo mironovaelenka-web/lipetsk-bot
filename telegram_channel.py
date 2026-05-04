@@ -94,13 +94,14 @@ class TelegramChannelParser:
                 if category and detected_cat != category:
                     continue
 
-                date_obj, date_str = extract_date(text)
                 now = datetime.now()
                 if date_obj:
-                    if date_obj > deadline:
+                    if date_obj.date() > deadline.date():
                         continue
                     if date_obj.date() < now.date():
                         continue  # пропускаем прошедшие
+                else:
+                    continue  # если дата не распознана — не показываем
 
                 pub_date_str = ""
                 time_el = msg.select_one("time")
