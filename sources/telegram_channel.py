@@ -134,7 +134,8 @@ class TelegramChannelParser:
             except Exception as e:
                 log.debug(f"Post parse error: {e}")
 
-        return eventsdef extract_date(text: str):
+        return events
+        def extract_date(text: str):
     pattern = r"(\d{1,2})\s+(январ\w*|феврал\w*|март\w*|апрел\w*|ма[яй]\w*|июн\w*|июл\w*|август\w*|сентябр\w*|октябр\w*|ноябр\w*|декабр\w*)(?:\s+(\d{4}))?"
     m = re.search(pattern, text.lower())
     if m:
