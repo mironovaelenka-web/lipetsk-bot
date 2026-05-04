@@ -79,7 +79,7 @@ class TelegramChannelParser:
         events = []
         deadline = datetime.now() + timedelta(days=days_ahead)
 
-        for msg in messages[-30:]:
+        for msg in messages[-60:]:
             try:
                 text_el = msg.select_one(".tgme_widget_message_text")
                 if not text_el:
