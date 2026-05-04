@@ -119,7 +119,7 @@ async def cmd_start(message: Message):
     await message.answer(
         f"👋 Привет, {message.from_user.first_name}!\n\n"
         "Я слежу за мероприятиями в <b>Липецке</b>.\n\n"
-        "Источники: afishagoroda.ru · Timepad · @gid_lipetsk\n\n"
+        "Источник: @gid_lipetsk\n\n"
         "Что ищем? 👇",
         parse_mode="HTML",
         reply_markup=main_keyboard()
