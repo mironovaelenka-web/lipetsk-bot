@@ -26,7 +26,8 @@ CATEGORIES = {
     "sport": "🏃 Спорт",
     "party": "🎉 Вечеринки",
     "theater": "🎭 Театр и кино",
-    "festival": "🧠 Квизы",
+    "quiz": "🧠 Квизы",
+    "festival": "🎪 Фестивали",
 }
 
 bot = Bot(token=BOT_TOKEN)
