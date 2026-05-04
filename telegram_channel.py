@@ -12,13 +12,13 @@ PREVIEW_URL = f"https://t.me/s/{CHANNEL}"
 
 CATEGORY_KEYWORDS = {
     "concerts": ["концерт", "музык", "рок", "джаз", "поп", "группа", "певец", "певица", "live"],
-    "art":      ["выставк", "экспозиц", "галере", "музей", "искусств", "художник"],
+    "art":      ["выставк", "экспозиц", "галере", "музей", "искусств", "художник", "мастер-класс", "мастеркласс"],
     "sport":    ["спорт", "футбол", "матч", "турнир", "бег", "тренировк", "соревнован"],
     "party":    ["вечеринк", "клуб", "дискотек", "party", "диджей", "dj"],
     "theater":  ["театр", "спектакл", "кино", "фильм", "премьер", "показ"],
-    "quiz": ["квиз", "мозгобойн", "викторин", "игра", "quiz"],
-    "festival", ["фестивал", "маркет", "ярмарк")],
-    "food"  ["ресторан", "кафе", "бар", "еда", "гастро","дегустация","общепит","ужин"],
+    "quiz":     ["квиз", "мозгобойн", "викторин", "quiz", "квизмашин", "туц", "расписани"],
+    "festival": ["фестивал", "маркет", "ярмарк", "фест"],
+    "food":     ["ресторан", "кафе", "бар", "еда", "гастро", "дегустация", "общепит", "ужин"],
 }
 
 MONTHS_RU = {
@@ -61,7 +61,7 @@ class TelegramChannelParser:
     SOURCE = "@gid_lipetsk"
 
     def __init__(self, *args, **kwargs):
-        pass  # Telethon больше не нужен
+        pass
 
     async def get_events(self, category: str = None, days_ahead: int = 7) -> list:
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36"}
@@ -79,7 +79,8 @@ class TelegramChannelParser:
         soup = BeautifulSoup(html, "html.parser")
         messages = soup.select(".tgme_widget_message")
         events = []
-        deadline = datetime.now() + timedelta(days=days_ahead)
+        now = datetime.now()
+        deadline = now + timedelta(days=days_ahead)
 
         for msg in messages[-60:]:
             try:
@@ -94,14 +95,16 @@ class TelegramChannelParser:
                 if category and detected_cat != category:
                     continue
 
-                now = datetime.now()
+                # Извлекаем дату из текста поста
+                date_obj, date_str = extract_date(text)
+
                 if date_obj:
                     if date_obj.date() > deadline.date():
                         continue
                     if date_obj.date() < now.date():
                         continue  # пропускаем прошедшие
                 else:
-                    continue  # если дата не распознана — не показываем
+                    continue  # если дата не найдена — пропускаем
 
                 pub_date_str = ""
                 time_el = msg.select_one("time")
