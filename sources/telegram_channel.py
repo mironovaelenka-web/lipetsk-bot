@@ -93,9 +93,14 @@ class TelegramChannelParser:
                     continue
 
                 date_obj, date_str = extract_date(text)
-                if date_obj and date_obj > deadline:
-                    continue
-
+                now = datetime.now()
+if date_obj:
+    if date_obj.date() > deadline.date():
+        continue
+    if date_obj.date() < now.date():
+        continue
+else:
+    continue
                 pub_date_str = ""
                 time_el = msg.select_one("time")
                 if time_el and time_el.get("datetime"):
