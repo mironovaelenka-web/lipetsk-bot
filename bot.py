@@ -164,7 +164,9 @@ async def text_search(message: Message):
         ("спорт", "футбол", "бег"): "sport",
         ("вечеринк", "клуб", "дискотек"): "party",
         ("театр", "кино", "спектакл"): "theater",
-        ("квиз", "викторин", "quiz"): "festival",
+        ("квиз", "викторин", "quiz"): "quiz",
+       ("фестивал", "маркет", "ярмарк"): "festival",
+    ("ресторан", "кафе", "бар", "еда", "гастро","дегустация","общепит","ужин"): "food",
     }
     category = None
     for keywords, cat in category_map.items():
