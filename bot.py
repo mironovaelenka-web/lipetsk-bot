@@ -26,7 +26,7 @@ CATEGORIES = {
     "sport": "🏃 Спорт",
     "party": "🎉 Вечеринки",
     "theater": "🎭 Театр и кино",
-    "festival": "🎪 Фестивали",
+    "festival": "🧠 Квизы",
 }
 
 bot = Bot(token=BOT_TOKEN)
@@ -162,7 +162,7 @@ async def text_search(message: Message):
         ("спорт", "футбол", "бег"): "sport",
         ("вечеринк", "клуб", "дискотек"): "party",
         ("театр", "кино", "спектакл"): "theater",
-        ("фестивал", "маркет", "ярмарк"): "festival",
+        ("квиз", "викторин", "quiz"): "festival",
     }
     category = None
     for keywords, cat in category_map.items():
