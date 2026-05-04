@@ -28,6 +28,7 @@ CATEGORIES = {
     "theater": "🎭 Театр и кино",
     "quiz": "🧠 Квизы",
     "festival": "🎪 Фестивали",
+    "food": "🍽 Общепит",
 }
 
 bot = Bot(token=BOT_TOKEN)
